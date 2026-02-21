@@ -9,8 +9,8 @@
     :root {
       --bg-color: #121212;
       --text-color: #e0e0e0;
-      --accent-start: #00e676; /* 作業開始ボタンの色（緑系） */
-      --accent-end: #ff5252;   /* 作業終了ボタンの色（赤系） */
+      --accent-start: #00e676; 
+      --accent-end: #ff5252;   
       --card-bg: #1e1e1e;
     }
 
@@ -26,7 +26,6 @@
       min-height: 100vh;
     }
 
-    /* スマホ画面を想定したコンテナ */
     .container {
       width: 100%;
       max-width: 400px;
@@ -45,7 +44,6 @@
       color: #ffffff;
     }
 
-    /* 数値表示用のカードスタイル */
     .stats-card {
       background-color: var(--card-bg);
       border: 1px solid #333;
@@ -73,7 +71,6 @@
       margin-left: 4px;
     }
 
-    /* ボタン群のレイアウト */
     .btn-group {
       display: flex;
       flex-direction: column;
@@ -81,7 +78,6 @@
       margin-top: 10px;
     }
 
-    /* ボタン共通スタイル（黒抜き・枠線のみ） */
     .btn {
       background-color: transparent;
       font-size: 1.2rem;
@@ -94,7 +90,6 @@
       outline: none;
     }
 
-    /* 作業開始ボタン */
     .btn-start {
       border: 2px solid var(--accent-start);
       color: var(--accent-start);
@@ -103,7 +98,6 @@
       background-color: rgba(0, 230, 118, 0.1);
     }
 
-    /* 作業終了ボタン */
     .btn-end {
       border: 2px solid var(--accent-end);
       color: var(--accent-end);
@@ -111,7 +105,14 @@
     .btn-end:active {
       background-color: rgba(255, 82, 82, 0.1);
     }
-
+    
+    /* ローディング表示用のスタイル */
+    #loadingMsg {
+      text-align: center;
+      color: #aaaaaa;
+      font-size: 0.9rem;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -120,23 +121,143 @@
 
     <div class="stats-card">
       <div class="stat-label">本日の作業台数</div>
-      <div class="stat-value">0<span class="unit">台</span></div>
+      <div class="stat-value" id="countVal">0<span class="unit">台</span></div>
     </div>
 
     <div class="stats-card">
       <div class="stat-label">1台あたりの平均作業時間</div>
-      <div class="stat-value">--<span class="unit">min</span></div>
+      <div class="stat-value" id="avgVal">--<span class="unit">min</span></div>
     </div>
 
     <div class="stats-card">
       <div class="stat-label">1時間あたりの作業台数</div>
-      <div class="stat-value">--<span class="unit">台/h</span></div>
+      <div class="stat-value" id="vphVal">--<span class="unit">台/h</span></div>
     </div>
+
+    <div id="loadingMsg">データ集計中...</div>
 
     <div class="btn-group">
       <button class="btn btn-start" id="startBtn">作業開始</button>
-      <button class="btn btn-end" id="endBtn">作業終了</button>
+      <button class="btn btn-end" id="calcBtn">計算する</button>
     </div>
   </div>
+
+  <script>
+    // 対象スプレッドシートのCSVエクスポートURL
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/1VQaC8n_rvbjyDxQSfMadQkpim43oRw9URb31hLovyhc/export?format=csv&gid=0';
+
+    const startBtn = document.getElementById('startBtn');
+    const calcBtn = document.getElementById('calcBtn');
+    const countVal = document.getElementById('countVal');
+    const avgVal = document.getElementById('avgVal');
+    const vphVal = document.getElementById('vphVal');
+    const loadingMsg = document.getElementById('loadingMsg');
+
+    // UIの表示を更新する関数
+    function updateDisplay(count, avg, vph) {
+      countVal.innerHTML = `${count}<span class="unit">台</span>`;
+      avgVal.innerHTML = `${avg}<span class="unit">min</span>`;
+      vphVal.innerHTML = `${vph}<span class="unit">台/h</span>`;
+    }
+
+    // 簡単なCSVパーサー関数（カンマ区切り・ダブルクォーテーション対応）
+    function parseCSVLine(text) {
+      const ret = [];
+      let insideQuote = false;
+      let value = '';
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '"') {
+          if (insideQuote && text[i+1] === '"') {
+            value += '"';
+            i++;
+          } else {
+            insideQuote = !insideQuote;
+          }
+        } else if (c === ',' && !insideQuote) {
+          ret.push(value);
+          value = '';
+        } else {
+          value += c;
+        }
+      }
+      ret.push(value);
+      return ret;
+    }
+
+    // 「作業開始」ボタンの処理
+    startBtn.addEventListener('click', () => {
+      if (window.confirm("時刻をリセットして作業を開始してよろしいですか？")) {
+        const now = Date.now();
+        localStorage.setItem('workStartTime', now);
+        updateDisplay(0, '--', '--');
+        alert("作業開始時刻をリセットしました。");
+      }
+    });
+
+    // 「計算する」ボタンの処理
+    calcBtn.addEventListener('click', async () => {
+      const startMs = localStorage.getItem('workStartTime');
+      if (!startMs) {
+        alert("まずは「作業開始」ボタンを押してください。");
+        return;
+      }
+
+      const startTime = new Date(parseInt(startMs, 10));
+      loadingMsg.style.display = 'block';
+
+      try {
+        const res = await fetch(CSV_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const csvText = await res.text();
+
+        const lines = csvText.split(/\r?\n/);
+        let count = 0;
+        let totalDuration = 0;
+
+        // ヘッダー行(インデックス0)をスキップしてループ
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+
+          const cols = parseCSVLine(lines[i]);
+          
+          // Y列(work_duration)は0始まりでインデックス24
+          if (cols.length < 25) continue;
+
+          const tsStr = cols[0];  // A列: timestamp_iso
+          const durStr = cols[24]; // Y列: work_duration
+
+          if (!tsStr || !durStr) continue;
+
+          const rowTime = new Date(tsStr);
+          if (isNaN(rowTime.getTime())) continue;
+
+          const duration = parseFloat(durStr);
+          if (isNaN(duration)) continue;
+
+          // 開始時刻以降かつ作業時間が計算されている行を集計
+          if (rowTime >= startTime) {
+            count++;
+            totalDuration += duration;
+          }
+        }
+
+        // 1台あたりの平均作業時間 (少数第1位まで)
+        const avg = count > 0 ? (totalDuration / count).toFixed(1) : 0;
+
+        // 1時間あたりの作業台数 (経過時間で割る)
+        const elapsedHours = (Date.now() - startTime.getTime()) / (1000 * 60 * 60);
+        const vph = elapsedHours > 0 ? (count / elapsedHours).toFixed(1) : 0;
+
+        updateDisplay(count, avg, vph);
+
+      } catch (err) {
+        console.error("Fetch Error: ", err);
+        alert("データの取得に失敗しました。スプレッドシートが「リンクを知っている全員」に公開されているか確認してください。");
+      } finally {
+        loadingMsg.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
