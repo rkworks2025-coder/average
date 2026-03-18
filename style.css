@@ -1,0 +1,239 @@
+:root {
+  --bg-color: #121212;
+  --text-color: #e0e0e0;
+  --card-bg: #1e1e1e;
+  
+  /* ボタン枠線用カラー */
+  --color-primary: #4fc3f7;   /* 水色系 */
+  --color-success: #00e676;   /* 緑色系 */
+  --color-warning: #ffb300;   /* 黄色系 */
+  --color-danger:  #ff5252;   /* 赤色系 */
+  --color-gray:    #9e9e9e;   /* 灰色系 */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 400px;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+h1 {
+  text-align: center;
+  font-size: 1.3rem;
+  margin: 5px 0 15px 0;
+  color: #ffffff;
+}
+
+/* 隠す用のクラス */
+.hidden {
+  display: none !important;
+}
+
+/* --- メイン画面のカードレイアウト --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+/* UPHや台数は大きく見せるためにグリッドを調整可能ですが、今回はシンプルに配置 */
+.stats-card {
+  background-color: var(--card-bg);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.stats-card:first-child {
+  grid-column: span 2; /* 台数は目立たせるために2列ぶち抜き */
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #aaaaaa;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.unit {
+  font-size: 0.8rem;
+  color: #aaaaaa;
+  margin-left: 2px;
+}
+
+/* --- ボタン共通スタイル（アウトラインデザイン） --- */
+.btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.btn-group-bottom {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+}
+
+.btn {
+  background-color: transparent;
+  font-size: 0.95rem;
+  font-weight: bold;
+  padding: 12px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn:active {
+  opacity: 0.7;
+}
+
+/* 個別ボタンカラー */
+.btn-start {
+  border: 2px solid var(--color-success);
+  color: var(--color-success);
+}
+.btn-calc {
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+}
+.btn-rest {
+  border: 2px solid var(--color-warning);
+  color: var(--color-warning);
+}
+.btn-rest.resting {
+  /* 休憩中は色を反転させて目立たせる */
+  background-color: rgba(255, 179, 0, 0.2);
+}
+.btn-edit {
+  border: 2px solid var(--color-gray);
+  color: var(--color-gray);
+}
+.btn-complete {
+  border: 2px solid var(--color-success);
+  color: var(--color-success);
+  width: 100%;
+  margin-bottom: 10px;
+}
+.btn-cancel {
+  border: 2px solid var(--color-gray);
+  color: var(--color-gray);
+  width: 100%;
+}
+.btn-small {
+  background-color: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+.btn-delete {
+  background-color: transparent;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-left: 5px;
+}
+
+#loadingMsg {
+  text-align: center;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  display: none;
+  margin-bottom: 10px;
+}
+
+/* --- 編集画面のスタイル --- */
+.edit-section {
+  background-color: var(--card-bg);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+.edit-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #aaaaaa;
+  margin-bottom: 8px;
+}
+.edit-input {
+  width: 100%;
+  background-color: #121212;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
+.counter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.btn-counter {
+  background-color: transparent;
+  border: 1px solid var(--color-gray);
+  color: var(--text-color);
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  border-radius: 4px;
+}
+.counter-input {
+  text-align: center;
+  flex: 1;
+}
+
+.rest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.rest-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+}
+.rest-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.rest-time-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+.rest-time-inputs input {
+  padding: 6px;
+  font-size: 0.9rem;
+}
