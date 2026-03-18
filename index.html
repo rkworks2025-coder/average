@@ -4,260 +4,83 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>作業実績モニタ</title>
-  <style>
-    /* ダークモードのカラーパレット定義 */
-    :root {
-      --bg-color: #121212;
-      --text-color: #e0e0e0;
-      --accent-start: #00e676; 
-      --accent-end: #ff5252;   
-      --card-bg: #1e1e1e;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 400px;
-      padding: 20px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      margin-top: 10px;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 1.4rem;
-      margin-bottom: 5px;
-      color: #ffffff;
-    }
-
-    .stats-card {
-      background-color: var(--card-bg);
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-
-    .stat-label {
-      font-size: 0.9rem;
-      color: #aaaaaa;
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #ffffff;
-    }
-
-    .unit {
-      font-size: 1rem;
-      color: #aaaaaa;
-      margin-left: 4px;
-    }
-
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      margin-top: 10px;
-    }
-
-    .btn {
-      background-color: transparent;
-      font-size: 1.2rem;
-      font-weight: bold;
-      padding: 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s ease;
-      outline: none;
-    }
-
-    .btn-start {
-      border: 2px solid var(--accent-start);
-      color: var(--accent-start);
-    }
-    .btn-start:active {
-      background-color: rgba(0, 230, 118, 0.1);
-    }
-
-    .btn-end {
-      border: 2px solid var(--accent-end);
-      color: var(--accent-end);
-    }
-    .btn-end:active {
-      background-color: rgba(255, 82, 82, 0.1);
-    }
-    
-    /* ローディング表示用のスタイル */
-    #loadingMsg {
-      text-align: center;
-      color: #aaaaaa;
-      font-size: 0.9rem;
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>作業実績モニタ</h1>
+    
+    <div id="main-view">
+      <h1>📊 作業実績モニタ</h1>
 
-    <div class="stats-card">
-      <div class="stat-label">本日の作業台数</div>
-      <div class="stat-value" id="countVal">0<span class="unit">台</span></div>
+      <div class="stats-grid">
+        <div class="stats-card">
+          <div class="stat-label">本日台数</div>
+          <div class="stat-value" id="countVal">0<span class="unit">台</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">平均時間</div>
+          <div class="stat-value" id="avgVal">--<span class="unit">min</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">UPH (台/h)</div>
+          <div class="stat-value" id="vphVal">--<span class="unit">台</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">純稼働時間</div>
+          <div class="stat-value" id="netTimeVal">0<span class="unit">h</span>0<span class="unit">m</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">合計休憩</div>
+          <div class="stat-value" id="restTimeVal">0<span class="unit">m</span></div>
+        </div>
+      </div>
+
+      <div id="loadingMsg">🔄 データ集計中...</div>
+
+      <div class="btn-group">
+        <button class="btn btn-rest" id="restToggleBtn">☕️ 休憩開始</button>
+        <button class="btn btn-calc" id="calcBtn">🔄 計算する</button>
+      </div>
+      
+      <div class="btn-group-bottom">
+        <button class="btn btn-start" id="startBtn">⏱️ 作業開始(リセット)</button>
+        <button class="btn btn-edit" id="editBtn">⚙️ 編集</button>
+      </div>
     </div>
 
-    <div class="stats-card">
-      <div class="stat-label">1台あたりの平均作業時間</div>
-      <div class="stat-value" id="avgVal">--<span class="unit">min</span></div>
+    <div id="edit-view" class="hidden">
+      <h1>⚙️ 編集モード</h1>
+
+      <div class="edit-section">
+        <label class="edit-label">⏱️ 作業開始時刻</label>
+        <input type="datetime-local" id="editStartTime" class="edit-input">
+      </div>
+
+      <div class="edit-section">
+        <label class="edit-label">📊 手動台数調整 (現在の自動集計に加算/減算)</label>
+        <div class="counter-group">
+          <button class="btn-counter" id="minusCountBtn">－</button>
+          <input type="number" id="editManualCount" class="edit-input counter-input" value="0">
+          <button class="btn-counter" id="plusCountBtn">＋</button>
+        </div>
+      </div>
+
+      <div class="edit-section">
+        <div class="rest-header">
+          <label class="edit-label">☕️ 休憩履歴</label>
+          <button class="btn-small" id="addRestBtn">＋ 追加</button>
+        </div>
+        <div id="restHistoryList">
+          </div>
+      </div>
+
+      <div class="edit-footer">
+        <button class="btn btn-complete" id="completeEditBtn">✔️ 完了 (保存して戻る)</button>
+        <button class="btn btn-cancel" id="cancelEditBtn">✖️ キャンセル</button>
+      </div>
     </div>
 
-    <div class="stats-card">
-      <div class="stat-label">1時間あたりの作業台数</div>
-      <div class="stat-value" id="vphVal">--<span class="unit">台/h</span></div>
-    </div>
-
-    <div id="loadingMsg">データ集計中...</div>
-
-    <div class="btn-group">
-      <button class="btn btn-start" id="startBtn">作業開始</button>
-      <button class="btn btn-end" id="calcBtn">計算する</button>
-    </div>
   </div>
-
-  <script>
-    // 対象スプレッドシートのCSVエクスポートURL
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/1VQaC8n_rvbjyDxQSfMadQkpim43oRw9URb31hLovyhc/export?format=csv&gid=0';
-
-    const startBtn = document.getElementById('startBtn');
-    const calcBtn = document.getElementById('calcBtn');
-    const countVal = document.getElementById('countVal');
-    const avgVal = document.getElementById('avgVal');
-    const vphVal = document.getElementById('vphVal');
-    const loadingMsg = document.getElementById('loadingMsg');
-
-    // UIの表示を更新する関数
-    function updateDisplay(count, avg, vph) {
-      countVal.innerHTML = `${count}<span class="unit">台</span>`;
-      avgVal.innerHTML = `${avg}<span class="unit">min</span>`;
-      vphVal.innerHTML = `${vph}<span class="unit">台/h</span>`;
-    }
-
-    // 簡単なCSVパーサー関数（カンマ区切り・ダブルクォーテーション対応）
-    function parseCSVLine(text) {
-      const ret = [];
-      let insideQuote = false;
-      let value = '';
-      for (let i = 0; i < text.length; i++) {
-        const c = text[i];
-        if (c === '"') {
-          if (insideQuote && text[i+1] === '"') {
-            value += '"';
-            i++;
-          } else {
-            insideQuote = !insideQuote;
-          }
-        } else if (c === ',' && !insideQuote) {
-          ret.push(value);
-          value = '';
-        } else {
-          value += c;
-        }
-      }
-      ret.push(value);
-      return ret;
-    }
-
-    // 「作業開始」ボタンの処理
-    startBtn.addEventListener('click', () => {
-      if (window.confirm("時刻をリセットして作業を開始してよろしいですか？")) {
-        const now = Date.now();
-        localStorage.setItem('workStartTime', now);
-        updateDisplay(0, '--', '--');
-        alert("作業開始時刻をリセットしました。");
-      }
-    });
-
-    // 「計算する」ボタンの処理
-    calcBtn.addEventListener('click', async () => {
-      const startMs = localStorage.getItem('workStartTime');
-      if (!startMs) {
-        alert("まずは「作業開始」ボタンを押してください。");
-        return;
-      }
-
-      const startTime = new Date(parseInt(startMs, 10));
-      loadingMsg.style.display = 'block';
-
-      try {
-        const res = await fetch(CSV_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const csvText = await res.text();
-
-        const lines = csvText.split(/\r?\n/);
-        let count = 0;
-        let totalDuration = 0;
-
-        // ヘッダー行(インデックス0)をスキップしてループ
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-
-          const cols = parseCSVLine(lines[i]);
-          
-          // Y列(work_duration)は0始まりでインデックス24
-          if (cols.length < 25) continue;
-
-          const tsStr = cols[0];  // A列: timestamp_iso
-          const durStr = cols[24]; // Y列: work_duration
-
-          if (!tsStr || !durStr) continue;
-
-          const rowTime = new Date(tsStr);
-          if (isNaN(rowTime.getTime())) continue;
-
-          const duration = parseFloat(durStr);
-          if (isNaN(duration)) continue;
-
-          // 開始時刻以降かつ作業時間が計算されている行を集計
-          if (rowTime >= startTime) {
-            count++;
-            totalDuration += duration;
-          }
-        }
-
-        // 1台あたりの平均作業時間 (少数第1位まで)
-        const avg = count > 0 ? (totalDuration / count).toFixed(1) : 0;
-
-        // 1時間あたりの作業台数 (経過時間で割る)
-        const elapsedHours = (Date.now() - startTime.getTime()) / (1000 * 60 * 60);
-        const vph = elapsedHours > 0 ? (count / elapsedHours).toFixed(1) : 0;
-
-        updateDisplay(count, avg, vph);
-
-      } catch (err) {
-        console.error("Fetch Error: ", err);
-        alert("データの取得に失敗しました。スプレッドシートが「リンクを知っている全員」に公開されているか確認してください。");
-      } finally {
-        loadingMsg.style.display = 'none';
-      }
-    });
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
