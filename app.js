@@ -81,7 +81,7 @@ function updateMainUI() {
   if (!appState.startTime) {
     countVal.innerHTML = `0<span class="unit">台</span>`;
     avgVal.innerHTML = `--<span class="unit">min</span>`;
-    vphVal.innerHTML = `--<span class="unit">台/h</span>`;
+    vphVal.innerHTML = `--<span class="unit">台</span>`;
     netTimeVal.innerHTML = `0<span class="unit">h</span>0<span class="unit">m</span>`;
     restTimeVal.innerHTML = `0<span class="unit">m</span>`;
     restToggleBtn.textContent = "☕️ 休憩開始";
