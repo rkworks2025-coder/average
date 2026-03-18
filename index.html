@@ -7,77 +7,80 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container" id="main-view">
-    <h1>📊 作業実績モニタ</h1>
-
-    <div class="stats-grid">
-      <div class="stats-card count-card">
-        <div class="stat-label">本日台数</div>
-        <div class="stat-value" id="countVal">0<span class="unit">台</span></div>
-      </div>
-      <div class="stats-card">
-        <div class="stat-label">平均時間</div>
-        <div class="stat-value" id="avgVal">--<span class="unit">min</span></div>
-      </div>
-      <div class="stats-card">
-        <div class="stat-label">UPH</div>
-        <div class="stat-value" id="vphVal">--<span class="unit">台/h</span></div>
-      </div>
-      <div class="stats-card">
-        <div class="stat-label">純稼働時間</div>
-        <div class="stat-value" id="netTimeVal">0<span class="unit">h</span>0<span class="unit">m</span></div>
-      </div>
-      <div class="stats-card">
-        <div class="stat-label">合計休憩</div>
-        <div class="stat-value" id="restTimeVal">0<span class="unit">m</span></div>
-      </div>
-    </div>
-
-    <div id="loadingMsg">🔄 データ集計中...</div>
-
-    <div class="btn-group">
-      <button class="btn btn-rest" id="restToggleBtn">☕️ 休憩開始</button>
-      <button class="btn btn-calc" id="calcBtn">🔄 計算する</button>
-    </div>
+  <div class="container">
     
-    <div class="btn-group-bottom">
-      <button class="btn btn-start" id="startBtn">⏱️ 作業開始(リセット)</button>
-      <button class="btn btn-edit" id="editBtn">⚙️ 編集</button>
-    </div>
-  </div>
+    <div id="main-view">
+      <h1>📊 作業実績モニタ</h1>
 
-  <div class="container hidden" id="edit-view">
-    <h1>⚙️ 編集モード</h1>
-
-    <div class="edit-section">
-      <label class="edit-label">⏱️ 作業開始時刻</label>
-      <input type="datetime-local" id="editStartTime" class="edit-input">
-    </div>
-
-    <div class="edit-section">
-      <label class="edit-label">📊 本日の作業台数 (合計)</label>
-      <div class="counter-group">
-        <button class="btn-counter" id="minusCountBtn">－</button>
-        <input type="number" id="editManualCount" class="edit-input counter-input" value="0">
-        <button class="btn-counter" id="plusCountBtn">＋</button>
-      </div>
-    </div>
-
-    <div class="edit-section rest-section">
-      <div class="rest-header">
-        <label class="edit-label">☕️ 休憩履歴</label>
-        <button class="btn-small" id="addRestBtn">＋ 追加</button>
-      </div>
-      <div id="restHistoryList" class="rest-list">
+      <div class="stats-grid">
+        <div class="stats-card count-card">
+          <div class="stat-label">本日台数</div>
+          <div class="stat-value" id="countVal">0<span class="unit">台</span></div>
         </div>
+        <div class="stats-card">
+          <div class="stat-label">平均時間</div>
+          <div class="stat-value" id="avgVal">--<span class="unit">min</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">UPH (台/h)</div>
+          <div class="stat-value" id="vphVal">--<span class="unit">台</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">純稼働時間</div>
+          <div class="stat-value" id="netTimeVal">0<span class="unit">h</span>0<span class="unit">m</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">合計休憩</div>
+          <div class="stat-value" id="restTimeVal">0<span class="unit">m</span></div>
+        </div>
+      </div>
+
+      <div id="loadingMsg">🔄 データ集計中...</div>
+
+      <div class="btn-group">
+        <button class="btn btn-rest" id="restToggleBtn">☕️ 休憩開始</button>
+        <button class="btn btn-calc" id="calcBtn">🔄 計算する</button>
+      </div>
+      
+      <div class="btn-group-bottom">
+        <button class="btn btn-start" id="startBtn">⏱️ 作業開始(リセット)</button>
+        <button class="btn btn-edit" id="editBtn">⚙️ 編集</button>
+      </div>
     </div>
 
-    <div class="edit-footer">
-      <button class="btn btn-complete" id="completeEditBtn">✔️ 完了 (保存)</button>
-      <button class="btn btn-cancel" id="cancelEditBtn">✖️ キャンセル</button>
+    <div id="edit-view" class="hidden">
+      <h1>⚙️ 編集モード</h1>
+
+      <div class="edit-section">
+        <label class="edit-label">⏱️ 作業開始時刻</label>
+        <input type="datetime-local" id="editStartTime" class="edit-input">
+      </div>
+
+      <div class="edit-section">
+        <label class="edit-label">📊 本日の作業台数 (合計)</label>
+        <div class="counter-group">
+          <button class="btn-counter" id="minusCountBtn">－</button>
+          <input type="number" id="editManualCount" class="edit-input counter-input" value="0">
+          <button class="btn-counter" id="plusCountBtn">＋</button>
+        </div>
+      </div>
+
+      <div class="edit-section">
+        <div class="rest-header">
+          <label class="edit-label">☕️ 休憩履歴</label>
+          <button class="btn-small" id="addRestBtn">＋ 追加</button>
+        </div>
+        <div id="restHistoryList">
+          </div>
+      </div>
+
+      <div class="edit-footer">
+        <button class="btn btn-complete" id="completeEditBtn">✔️ 完了 (保存して戻る)</button>
+        <button class="btn btn-cancel" id="cancelEditBtn">✖️ キャンセル</button>
+      </div>
     </div>
+
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>
