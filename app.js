@@ -2,7 +2,6 @@
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/1VQaC8n_rvbjyDxQSfMadQkpim43oRw9URb31hLovyhc/export?format=csv&gid=0';
 
 // --- DOM要素の取得 ---
-// メイン画面
 const mainView = document.getElementById('main-view');
 const countVal = document.getElementById('countVal');
 const avgVal = document.getElementById('avgVal');
@@ -16,7 +15,6 @@ const calcBtn = document.getElementById('calcBtn');
 const restToggleBtn = document.getElementById('restToggleBtn');
 const editBtn = document.getElementById('editBtn');
 
-// 編集画面
 const editView = document.getElementById('edit-view');
 const editStartTime = document.getElementById('editStartTime');
 const editManualCount = document.getElementById('editManualCount');
@@ -29,13 +27,12 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 
 // --- 状態管理（State） ---
 let appState = {
-  startTime: null,          // 作業開始時刻 (timestamp)
-  manualCountOffset: 0,     // 手動調整台数
-  rests: [],                // 休憩履歴 [{start: timestamp, end: timestamp | null}]
-  isResting: false          // 現在休憩中かどうか
+  startTime: null,          
+  manualCountOffset: 0,     // 自動集計値との差分
+  rests: [],                
+  isResting: false          
 };
 
-// スプレッドシートから取得した直近の計算結果を保持
 let lastFetchedCount = 0;
 let lastFetchedTotalDuration = 0;
 
@@ -56,25 +53,22 @@ function saveState() {
   localStorage.setItem('workMonitorState', JSON.stringify(appState));
 }
 
-// 日時フォーマット変換 (timestamp -> YYYY-MM-DDTHH:mm) 編集画面のinput用
+// 日時フォーマット変換
 function formatForDateTimeInput(timestamp) {
   if (!timestamp) return '';
   const d = new Date(timestamp);
   const tzOffset = d.getTimezoneOffset() * 60000;
-  const localIso = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  return localIso;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
-// --- 時間・計算ロジック ---
-
-// 合計休憩時間(ミリ秒)を計算
+// 合計休憩時間の計算
 function calculateTotalRestTimeMs(referenceTimeMs) {
   let total = 0;
   const now = referenceTimeMs || Date.now();
   
   appState.rests.forEach(r => {
     const rStart = r.start;
-    const rEnd = r.end ? r.end : now; // 終了していない休憩は現在時刻までとして計算
+    const rEnd = r.end ? r.end : now;
     if (rStart && rEnd > rStart) {
       total += (rEnd - rStart);
     }
@@ -82,12 +76,12 @@ function calculateTotalRestTimeMs(referenceTimeMs) {
   return total;
 }
 
-// メイン画面の表示更新（現在時刻ベースで再計算）
+// メイン画面の表示更新
 function updateMainUI() {
   if (!appState.startTime) {
     countVal.innerHTML = `0<span class="unit">台</span>`;
     avgVal.innerHTML = `--<span class="unit">min</span>`;
-    vphVal.innerHTML = `--<span class="unit">台</span>`;
+    vphVal.innerHTML = `--<span class="unit">台/h</span>`;
     netTimeVal.innerHTML = `0<span class="unit">h</span>0<span class="unit">m</span>`;
     restTimeVal.innerHTML = `0<span class="unit">m</span>`;
     restToggleBtn.textContent = "☕️ 休憩開始";
@@ -95,7 +89,6 @@ function updateMainUI() {
     return;
   }
 
-  // 休憩ボタンの表示状態
   if (appState.isResting) {
     restToggleBtn.textContent = "▶️ 休憩終了(再開)";
     restToggleBtn.classList.add('resting');
@@ -107,18 +100,16 @@ function updateMainUI() {
   const now = Date.now();
   const totalElapsedMs = now - appState.startTime;
   const totalRestMs = calculateTotalRestTimeMs(now);
-  const netWorkMs = Math.max(0, totalElapsedMs - totalRestMs); // 実稼働時間
+  const netWorkMs = Math.max(0, totalElapsedMs - totalRestMs);
 
-  // 実稼働時間の表示 (時間と分)
   const netHours = Math.floor(netWorkMs / (1000 * 60 * 60));
   const netMinutes = Math.floor((netWorkMs % (1000 * 60 * 60)) / (1000 * 60));
   netTimeVal.innerHTML = `${netHours}<span class="unit">h</span>${netMinutes}<span class="unit">m</span>`;
 
-  // 休憩時間の表示 (合計分)
   const restMinutes = Math.floor(totalRestMs / (1000 * 60));
   restTimeVal.innerHTML = `${restMinutes}<span class="unit">m</span>`;
 
-  // 台数とUPHの計算
+  // 現在のトータル台数算出
   const totalCount = Math.max(0, lastFetchedCount + appState.manualCountOffset);
   countVal.innerHTML = `${totalCount}<span class="unit">台</span>`;
 
@@ -131,8 +122,6 @@ function updateMainUI() {
 }
 
 // --- メイン画面のアクション ---
-
-// 作業開始(リセット)
 startBtn.addEventListener('click', () => {
   if (window.confirm("時刻をリセットして新しく計測を開始しますか？")) {
     appState = {
@@ -149,7 +138,6 @@ startBtn.addEventListener('click', () => {
   }
 });
 
-// 休憩開始/終了トグル
 restToggleBtn.addEventListener('click', () => {
   if (!appState.startTime) {
     alert("まずは「作業開始」ボタンを押してください。");
@@ -157,14 +145,10 @@ restToggleBtn.addEventListener('click', () => {
   }
 
   if (appState.isResting) {
-    // 休憩を終了する
     const activeRest = appState.rests.find(r => r.end === null);
-    if (activeRest) {
-      activeRest.end = Date.now();
-    }
+    if (activeRest) activeRest.end = Date.now();
     appState.isResting = false;
   } else {
-    // 休憩を開始する
     appState.rests.push({ start: Date.now(), end: null });
     appState.isResting = true;
   }
@@ -172,7 +156,6 @@ restToggleBtn.addEventListener('click', () => {
   updateMainUI();
 });
 
-// CSVパーサー
 function parseCSVLine(text) {
   const ret = [];
   let insideQuote = false;
@@ -197,7 +180,6 @@ function parseCSVLine(text) {
   return ret;
 }
 
-// 計算する (Fetch)
 calcBtn.addEventListener('click', async () => {
   if (!appState.startTime) {
     alert("まずは「作業開始」ボタンを押してください。");
@@ -251,15 +233,16 @@ calcBtn.addEventListener('click', async () => {
 
 
 // --- 編集画面のロジック ---
-
 function openEditView() {
-  // メインを隠して編集を表示
   mainView.classList.add('hidden');
   editView.classList.remove('hidden');
 
-  // 値をフォームにセット
   editStartTime.value = formatForDateTimeInput(appState.startTime);
-  editManualCount.value = appState.manualCountOffset;
+  
+  // 現在のトータル台数を計算して表示
+  const currentTotal = Math.max(0, lastFetchedCount + appState.manualCountOffset);
+  editManualCount.value = currentTotal;
+
   renderRestHistoryEdit();
 }
 
@@ -269,7 +252,6 @@ function renderRestHistoryEdit() {
     const itemDiv = document.createElement('div');
     itemDiv.className = 'rest-item';
     
-    // 開始と終了のinputを作成
     const inputsDiv = document.createElement('div');
     inputsDiv.className = 'rest-time-inputs';
     
@@ -291,7 +273,6 @@ function renderRestHistoryEdit() {
     inputsDiv.appendChild(startInput);
     inputsDiv.appendChild(endInput);
 
-    // 削除ボタン
     const delBtn = document.createElement('button');
     delBtn.className = 'btn-delete';
     delBtn.textContent = '🗑️ 削除';
@@ -308,7 +289,6 @@ function renderRestHistoryEdit() {
   });
 }
 
-// 編集モードを開く
 editBtn.addEventListener('click', () => {
   if (!appState.startTime) {
     alert("データがありません。「作業開始」を先に行ってください。");
@@ -317,24 +297,21 @@ editBtn.addEventListener('click', () => {
   openEditView();
 });
 
-// 手動カウントの増減ボタン
+// 手動台数の増減 (画面上はトータル台数を直接操作)
 minusCountBtn.addEventListener('click', () => {
-  editManualCount.value = parseInt(editManualCount.value || 0) - 1;
+  const currentVal = parseInt(editManualCount.value || 0);
+  if (currentVal > 0) editManualCount.value = currentVal - 1;
 });
 plusCountBtn.addEventListener('click', () => {
   editManualCount.value = parseInt(editManualCount.value || 0) + 1;
 });
 
-// 休憩を手動追加
 addRestBtn.addEventListener('click', () => {
-  // 現在時刻でダミーの休憩データを追加して再描画
-  appState.rests.push({ start: Date.now(), end: Date.now() + (1000 * 60 * 10) }); // デフォルト10分間
+  appState.rests.push({ start: Date.now(), end: Date.now() + (1000 * 60 * 10) }); 
   renderRestHistoryEdit();
 });
 
-// 編集のキャンセル
 cancelEditBtn.addEventListener('click', () => {
-  // 変更を破棄して状態をリロード
   const savedState = localStorage.getItem('workMonitorState');
   if (savedState) {
     appState = JSON.parse(savedState);
@@ -343,19 +320,17 @@ cancelEditBtn.addEventListener('click', () => {
   mainView.classList.remove('hidden');
 });
 
-// 編集の完了(保存)
 completeEditBtn.addEventListener('click', () => {
   if (!window.confirm("変更内容を保存しますか？")) return;
 
-  // 開始時刻の保存
   if (editStartTime.value) {
     appState.startTime = new Date(editStartTime.value).getTime();
   }
 
-  // 手動台数の保存
-  appState.manualCountOffset = parseInt(editManualCount.value || 0);
+  // 入力されたトータル台数から自動集計分を引き、差分(オフセット)として保存
+  const targetTotal = parseInt(editManualCount.value || 0);
+  appState.manualCountOffset = targetTotal - lastFetchedCount;
 
-  // 休憩履歴の保存 (DOMから読み取る)
   const restFields = document.querySelectorAll('.rest-edit-field');
   const newRests = [];
   let isAnyRestActive = false;
@@ -374,15 +349,13 @@ completeEditBtn.addEventListener('click', () => {
   });
 
   appState.rests = newRests;
-  appState.isResting = isAnyRestActive; // 終了時刻が空のものがあれば休憩中扱いにする
+  appState.isResting = isAnyRestActive; 
 
   saveState();
   updateMainUI();
   
-  // メイン画面に戻る
   editView.classList.add('hidden');
   mainView.classList.remove('hidden');
 });
 
-// 初回起動処理
 init();
