@@ -40,6 +40,14 @@ button, input {
   max-width: 400px;
   padding: 15px;
   box-sizing: border-box;
+  
+  /* --- 修正箇所：内部スクロールを有効にし、画面の高さを固定 --- */
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
 }
 
 h1 {
@@ -221,4 +229,15 @@ h1 {
 .rest-time-inputs input {
   padding: 6px;
   font-size: 0.9rem;
+}
+
+/* --- 修正箇所：編集画面のフッターを画面下部に固定 --- */
+.edit-footer {
+  position: sticky;
+  bottom: -15px; /* containerのpadding分を調整 */
+  background-color: var(--bg-color);
+  padding: 15px 0;
+  margin-top: auto;
+  z-index: 10;
+  border-top: 1px solid #333;
 }
