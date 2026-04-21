@@ -53,7 +53,20 @@ function saveState() {
   localStorage.setItem('workMonitorState', JSON.stringify(appState));
 }
 
-// 日時フォーマット変換
+/**
+ * 日本時間(JST)の文字列を、ブラウザの解釈に頼らず確実にDateオブジェクトへ変換する
+ * @param {string} dateStr "2026/04/21 10:00:00" 形式を想定
+ */
+function parseJSTDate(dateStr) {
+  if (!dateStr) return null;
+  // ハイフンをスラッシュに置換してブラウザのUTC誤認（ISO形式判定）を防ぐ
+  const normalizedStr = dateStr.replace(/-/g, '/');
+  const d = new Date(normalizedStr);
+  if (isNaN(d.getTime())) return null;
+  return d;
+}
+
+// 日時フォーマット変換 (input[type="datetime-local"]用)
 function formatForDateTimeInput(timestamp) {
   if (!timestamp) return '';
   const d = new Date(timestamp);
@@ -109,11 +122,12 @@ function updateMainUI() {
   const restMinutes = Math.floor(totalRestMs / (1000 * 60));
   restTimeVal.innerHTML = `${restMinutes}<span class="unit">m</span>`;
 
-  // 現在のトータル台数算出
+  // 現在のトータル台数算出 (表示用)
   const totalCount = Math.max(0, lastFetchedCount + appState.manualCountOffset);
   countVal.innerHTML = `${totalCount}<span class="unit">台</span>`;
 
-  const avg = totalCount > 0 ? (lastFetchedTotalDuration / totalCount).toFixed(1) : "--";
+  // 平均時間の計算：記録（CSV）がある分だけで算出し、不整合を防ぐ
+  const avg = lastFetchedCount > 0 ? (lastFetchedTotalDuration / lastFetchedCount).toFixed(1) : "--";
   avgVal.innerHTML = `${avg}<span class="unit">min</span>`;
 
   const netWorkHoursDecimal = netWorkMs / (1000 * 60 * 60);
@@ -190,7 +204,7 @@ calcBtn.addEventListener('click', async () => {
 
   try {
     const res = await fetch(CSV_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP通信エラー: ${res.status}`);
     const csvText = await res.text();
 
     const lines = csvText.split(/\r?\n/);
@@ -199,20 +213,26 @@ calcBtn.addEventListener('click', async () => {
 
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
+      
       const cols = parseCSVLine(lines[i]);
-      if (cols.length < 25) continue;
+      // 列数チェック：SSの仕様(25列)と1ミリでも異なればエラー
+      if (cols.length < 25) {
+        throw new Error(`CSVの列数が不足しています (行:${i+1}, 取得数:${cols.length})。SSの構成を確認してください。`);
+      }
 
       const tsStr = cols[0];  
       const durStr = cols[24]; 
 
       if (!tsStr || !durStr) continue;
 
-      const rowTime = new Date(tsStr);
-      if (isNaN(rowTime.getTime())) continue;
+      // JSTとして厳密にパース
+      const rowTime = parseJSTDate(tsStr);
+      if (!rowTime) continue;
 
       const duration = parseFloat(durStr);
       if (isNaN(duration)) continue;
 
+      // 開始時刻（JSTベース）と比較
       if (rowTime.getTime() >= appState.startTime) {
         count++;
         totalDuration += duration;
@@ -224,8 +244,9 @@ calcBtn.addEventListener('click', async () => {
     updateMainUI();
 
   } catch (err) {
-    console.error("Fetch Error: ", err);
-    alert("データの取得に失敗しました。");
+    console.error("Critical Analysis Error: ", err);
+    alert(`エラーが発生しました: ${err.message}`);
+    // 異常検知時は処理を停止し、古いデータを表示させないためにリロードを検討
   } finally {
     loadingMsg.style.display = 'none';
   }
