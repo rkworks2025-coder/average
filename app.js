@@ -442,7 +442,7 @@ completeEditBtn.addEventListener('click', () => {
 });
 
 // --- 過去の作業実績画面 ---
-const HISTORY_DAYS = 7; // 遡って表示する期間（日）
+const HISTORY_DAYS = 31; // 遡って表示する期間（日）
 
 const historyBtn = document.getElementById('historyBtn');
 const historyView = document.getElementById('history-view');
