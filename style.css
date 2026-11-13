@@ -241,3 +241,51 @@ h1 {
   z-index: 10;
   border-top: 1px solid #333;
 }
+
+/* --- 過去の作業実績 --- */
+.btn-group-history {
+  margin-top: 10px;
+}
+.btn-history { border: 2px solid var(--color-primary); color: var(--color-primary); width: 100%; }
+
+.history-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.btn-nav {
+  background-color: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  width: 50px;
+  height: 50px;
+  font-size: 1.2rem;
+  border-radius: 6px;
+}
+.btn-nav:disabled {
+  border-color: #333;
+  color: #555;
+}
+.history-label {
+  flex: 1;
+  text-align: center;
+}
+.history-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff;
+}
+.history-range {
+  font-size: 0.85rem;
+  color: #aaaaaa;
+  margin-top: 4px;
+}
+
+#histLoadingMsg {
+  text-align: center;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  display: none;
+  margin-bottom: 10px;
+}

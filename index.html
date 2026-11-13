@@ -46,6 +46,46 @@
         <button class="btn btn-start" id="startBtn">⏱️ 作業開始(リセット)</button>
         <button class="btn btn-edit" id="editBtn">⚙️ 編集</button>
       </div>
+
+      <div class="btn-group-history">
+        <button class="btn btn-history" id="historyBtn">📅 前回の作業実績</button>
+      </div>
+    </div>
+
+    <div id="history-view" class="hidden">
+      <h1>📅 過去の作業実績</h1>
+
+      <div class="history-nav">
+        <button class="btn-nav" id="histPrevBtn">◀</button>
+        <div class="history-label">
+          <div class="history-title" id="histTitle">前回</div>
+          <div class="history-range" id="histRange"></div>
+        </div>
+        <button class="btn-nav" id="histNextBtn">▶</button>
+      </div>
+
+      <div id="histLoadingMsg">🔄 データ読み込み中...</div>
+
+      <div class="stats-grid">
+        <div class="stats-card count-card">
+          <div class="stat-label">台数</div>
+          <div class="stat-value" id="histCountVal">--<span class="unit">台</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">平均時間</div>
+          <div class="stat-value" id="histAvgVal">--<span class="unit">min</span></div>
+        </div>
+        <div class="stats-card">
+          <div class="stat-label">UPH (台/h)</div>
+          <div class="stat-value" id="histVphVal">--<span class="unit">台/h</span></div>
+        </div>
+        <div class="stats-card count-card">
+          <div class="stat-label">稼働時間</div>
+          <div class="stat-value" id="histNetTimeVal">--<span class="unit">h</span>--<span class="unit">m</span></div>
+        </div>
+      </div>
+
+      <button class="btn btn-cancel" id="histBackBtn">↩️ 戻る</button>
     </div>
 
     <div id="edit-view" class="hidden">

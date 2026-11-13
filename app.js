@@ -194,50 +194,112 @@ function parseCSVLine(text) {
   return ret;
 }
 
-calcBtn.addEventListener('click', async () => {
-  if (!appState.startTime) {
-    alert("まずは「作業開始」ボタンを押してください。");
-    return;
-  }
+// 開始時刻が消えていた場合の自動復元で、
+// 「記録と記録の間がこれ以上空いたら別の回の作業」とみなす間隔。
+// 夕方〜翌明け方のように日付をまたぐ作業があるため、日付ではなく空き時間で区切る。
+const SESSION_GAP_MS = 5 * 60 * 60 * 1000; // 5時間
 
+/**
+ * 記録（時刻・作業時間[分]）の配列を、SESSION_GAP_MS 以上の空きで区切って
+ * 1回分の作業ごとにまとめる（古い順）。
+ * 各回の開始時刻は「最初の記録の時刻 − その車両の作業時間」、終了時刻は最後の記録の時刻。
+ */
+function splitSessions(records) {
+  const sorted = records.slice().sort((a, b) => a.time - b.time);
+  const sessions = [];
+  let cur = null;
+  sorted.forEach(r => {
+    if (!cur || r.time - cur.end >= SESSION_GAP_MS) {
+      cur = { start: r.time - r.duration * 60 * 1000, end: r.time, count: 0, totalDuration: 0 };
+      sessions.push(cur);
+    }
+    cur.end = r.time;
+    cur.count++;
+    cur.totalDuration += r.duration;
+  });
+  return sessions;
+}
+
+/**
+ * 記録の配列から、直近の作業（今回）の開始時刻を推定する。
+ * 最新の記録自体が現在から SESSION_GAP_MS 以上前なら、作業中ではないとして null。
+ */
+function estimateSessionStart(records, nowMs) {
+  const sessions = splitSessions(records);
+  if (sessions.length === 0) return null;
+  const last = sessions[sessions.length - 1];
+  if (nowMs - last.end >= SESSION_GAP_MS) return null;
+  return last.start;
+}
+
+/**
+ * スプレッドシート(CSV)から全記録（時刻・作業時間[分]）を読み込む。
+ */
+async function fetchRecords() {
+  const res = await fetch(CSV_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP通信エラー: ${res.status}`);
+  const csvText = await res.text();
+
+  const lines = csvText.split(/\r?\n/);
+  const records = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    
+    const cols = parseCSVLine(lines[i]);
+    // 列数チェック：SSの仕様(25列)と1ミリでも異なればエラー
+    if (cols.length < 25) {
+      throw new Error(`CSVの列数が不足しています (行:${i+1}, 取得数:${cols.length})。SSの構成を確認してください。`);
+    }
+
+    const tsStr = cols[0];  
+    const durStr = cols[24]; 
+
+    if (!tsStr || !durStr) continue;
+
+    // JSTとして厳密にパース
+    const rowTime = parseJSTDate(tsStr);
+    if (!rowTime) continue;
+
+    const duration = parseFloat(durStr);
+    if (isNaN(duration)) continue;
+
+    records.push({ time: rowTime.getTime(), duration: duration });
+  }
+  return records;
+}
+
+calcBtn.addEventListener('click', async () => {
   loadingMsg.style.display = 'block';
 
   try {
-    const res = await fetch(CSV_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP通信エラー: ${res.status}`);
-    const csvText = await res.text();
-
-    const lines = csvText.split(/\r?\n/);
+    const records = await fetchRecords();
     let count = 0;
     let totalDuration = 0;
 
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
-      
-      const cols = parseCSVLine(lines[i]);
-      // 列数チェック：SSの仕様(25列)と1ミリでも異なればエラー
-      if (cols.length < 25) {
-        throw new Error(`CSVの列数が不足しています (行:${i+1}, 取得数:${cols.length})。SSの構成を確認してください。`);
+    // 開始時刻が消えている場合は、記録から直近の作業の開始時刻を自動復元する
+    if (!appState.startTime) {
+      const estimated = estimateSessionStart(records, Date.now());
+      if (estimated === null) {
+        alert("まずは「作業開始」ボタンを押してください。");
+        return;
       }
-
-      const tsStr = cols[0];  
-      const durStr = cols[24]; 
-
-      if (!tsStr || !durStr) continue;
-
-      // JSTとして厳密にパース
-      const rowTime = parseJSTDate(tsStr);
-      if (!rowTime) continue;
-
-      const duration = parseFloat(durStr);
-      if (isNaN(duration)) continue;
-
-      // 開始時刻（JSTベース）と比較
-      if (rowTime.getTime() >= appState.startTime) {
-        count++;
-        totalDuration += duration;
-      }
+      appState = {
+        startTime: estimated,
+        manualCountOffset: 0,
+        rests: [],
+        isResting: false
+      };
+      saveState();
     }
+
+    records.forEach(r => {
+      // 開始時刻（JSTベース）と比較
+      if (r.time >= appState.startTime) {
+        count++;
+        totalDuration += r.duration;
+      }
+    });
 
     lastFetchedCount = count;
     lastFetchedTotalDuration = totalDuration;
@@ -376,6 +438,115 @@ completeEditBtn.addEventListener('click', () => {
   updateMainUI();
   
   editView.classList.add('hidden');
+  mainView.classList.remove('hidden');
+});
+
+// --- 過去の作業実績画面 ---
+const HISTORY_DAYS = 7; // 遡って表示する期間（日）
+
+const historyBtn = document.getElementById('historyBtn');
+const historyView = document.getElementById('history-view');
+const histPrevBtn = document.getElementById('histPrevBtn');
+const histNextBtn = document.getElementById('histNextBtn');
+const histTitle = document.getElementById('histTitle');
+const histRange = document.getElementById('histRange');
+const histCountVal = document.getElementById('histCountVal');
+const histAvgVal = document.getElementById('histAvgVal');
+const histVphVal = document.getElementById('histVphVal');
+const histNetTimeVal = document.getElementById('histNetTimeVal');
+const histLoadingMsg = document.getElementById('histLoadingMsg');
+const histBackBtn = document.getElementById('histBackBtn');
+
+let historySessions = []; // 新しい順。[0]=前回
+let historyIndex = 0;
+
+function formatMonthDayTime(ms) {
+  const d = new Date(ms);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+}
+
+function renderHistory() {
+  if (historySessions.length === 0) {
+    histTitle.textContent = '記録なし';
+    histRange.textContent = `直近${HISTORY_DAYS}日に終わった作業がありません`;
+    histCountVal.innerHTML = `--<span class="unit">台</span>`;
+    histAvgVal.innerHTML = `--<span class="unit">min</span>`;
+    histVphVal.innerHTML = `--<span class="unit">台/h</span>`;
+    histNetTimeVal.innerHTML = `--<span class="unit">h</span>--<span class="unit">m</span>`;
+    histPrevBtn.disabled = true;
+    histNextBtn.disabled = true;
+    return;
+  }
+
+  const ses = historySessions[historyIndex];
+  histTitle.textContent = historyIndex === 0 ? '前回' : `${historyIndex + 1}回前`;
+  histRange.textContent = `${formatMonthDayTime(ses.start)} 〜 ${formatMonthDayTime(ses.end)}`;
+
+  const netWorkMs = Math.max(0, ses.end - ses.start);
+  const netHours = Math.floor(netWorkMs / (1000 * 60 * 60));
+  const netMinutes = Math.floor((netWorkMs % (1000 * 60 * 60)) / (1000 * 60));
+  const avg = ses.count > 0 ? (ses.totalDuration / ses.count).toFixed(1) : '--';
+  const netWorkHoursDecimal = netWorkMs / (1000 * 60 * 60);
+  const vph = netWorkHoursDecimal > 0 ? (ses.count / netWorkHoursDecimal).toFixed(1) : '--';
+
+  histCountVal.innerHTML = `${ses.count}<span class="unit">台</span>`;
+  histAvgVal.innerHTML = `${avg}<span class="unit">min</span>`;
+  histVphVal.innerHTML = `${vph}<span class="unit">台/h</span>`;
+  histNetTimeVal.innerHTML = `${netHours}<span class="unit">h</span>${netMinutes}<span class="unit">m</span>`;
+
+  // ◀ = さらに前の回、▶ = 新しい回
+  histPrevBtn.disabled = historyIndex >= historySessions.length - 1;
+  histNextBtn.disabled = historyIndex <= 0;
+}
+
+historyBtn.addEventListener('click', async () => {
+  mainView.classList.add('hidden');
+  historyView.classList.remove('hidden');
+  historySessions = [];
+  historyIndex = 0;
+  histTitle.textContent = '前回';
+  histRange.textContent = '';
+  histPrevBtn.disabled = true;
+  histNextBtn.disabled = true;
+  histLoadingMsg.style.display = 'block';
+
+  try {
+    const records = await fetchRecords();
+    const now = Date.now();
+    const sessions = splitSessions(records);
+    // 作業中の今回（最新の記録から SESSION_GAP_MS 未満）は除外し、終わった回だけを対象にする
+    if (sessions.length > 0 && now - sessions[sessions.length - 1].end < SESSION_GAP_MS) {
+      sessions.pop();
+    }
+    const since = now - HISTORY_DAYS * 24 * 60 * 60 * 1000;
+    historySessions = sessions.filter(ses => ses.end >= since).reverse();
+    renderHistory();
+  } catch (err) {
+    console.error("History Load Error: ", err);
+    alert(`エラーが発生しました: ${err.message}`);
+  } finally {
+    histLoadingMsg.style.display = 'none';
+  }
+});
+
+histPrevBtn.addEventListener('click', () => {
+  if (historyIndex < historySessions.length - 1) {
+    historyIndex++;
+    renderHistory();
+  }
+});
+
+histNextBtn.addEventListener('click', () => {
+  if (historyIndex > 0) {
+    historyIndex--;
+    renderHistory();
+  }
+});
+
+histBackBtn.addEventListener('click', () => {
+  historyView.classList.add('hidden');
   mainView.classList.remove('hidden');
 });
 
